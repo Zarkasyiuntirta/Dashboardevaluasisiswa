@@ -6,15 +6,19 @@ import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadius
 
 // --- HELPER FUNCTIONS ---
 const calculateAttendanceScore = (attendance: Attendance) => {
+  if (!attendance) return 0;
   return attendance.totalSessions > 0 ? (attendance.present / attendance.totalSessions) * 100 : 0;
 };
 const calculateProactivityScore = (proactivity: Proactivity) => {
+  if (!proactivity) return 0;
   return (proactivity.initiative + proactivity.participation + proactivity.discipline) / 3;
 };
 const calculateAssignmentsScore = (assignments: Assignments) => {
+  if (!assignments) return 0;
   return (assignments.responsibility + assignments.teamwork) / 2;
 };
 const calculateExamsScore = (exams: Exams) => {
+    if (!exams) return 0;
   return (exams.uts1 + exams.uas1 + exams.uts2 + exams.uas2) / 4;
 };
 const calculateFinalScore = (scores: Scores): number => {
@@ -59,20 +63,51 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, studentData, setS
     }
   }, [user]);
 
-  const rankingData = useMemo(() => {
+  const overallRankingData = useMemo(() => {
+    const calculateOverallAverageScore = (student: Student): number => {
+      const totalScore = SUBJECTS.reduce((acc, subject) => {
+        return acc + calculateFinalScore(student.scores[subject]);
+      }, 0);
+      return totalScore / SUBJECTS.length;
+    };
+
     return studentData
       .map(student => ({
         ...student,
-        finalScore: calculateFinalScore(student.scores[selectedSubject]),
+        overallScore: calculateOverallAverageScore(student),
       }))
-      .sort((a, b) => b.finalScore - a.finalScore)
+      .sort((a, b) => b.overallScore - a.overallScore)
       .map((student, index) => ({ ...student, rank: index + 1 }));
-  }, [studentData, selectedSubject]);
+  }, [studentData]);
 
   const studentRank = useMemo(() => {
-      const rankInfo = rankingData.find(s => s.id === selectedStudentId);
+      const rankInfo = overallRankingData.find(s => s.id === selectedStudentId);
       return rankInfo ? rankInfo.rank : null;
-  }, [rankingData, selectedStudentId]);
+  }, [overallRankingData, selectedStudentId]);
+
+  const studentAverages = useMemo(() => {
+    if (!selectedStudent) return { raport: 0, attendance: 0, proactivity: 0 };
+    
+    let totalRaport = 0;
+    let totalAttendance = 0;
+    let totalProactivity = 0;
+
+    SUBJECTS.forEach(subject => {
+        const scores = selectedStudent.scores[subject];
+        if (scores) {
+            totalRaport += calculateFinalScore(scores);
+            totalAttendance += calculateAttendanceScore(scores.attendance);
+            totalProactivity += calculateProactivityScore(scores.proactivity);
+        }
+    });
+
+    const numSubjects = SUBJECTS.length;
+    return {
+        raport: totalRaport / numSubjects,
+        attendance: totalAttendance / numSubjects,
+        proactivity: totalProactivity / numSubjects,
+    };
+  }, [selectedStudent]);
 
   if (!selectedStudent) {
     return <div className="p-8 text-center text-xl">Memuat data murid...</div>;
@@ -142,31 +177,31 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, studentData, setS
                 <div className="mt-4 flex justify-center gap-4">
                     <div className="p-4 bg-navy-900 rounded-lg">
                         <p className="text-3xl font-bold text-indigo-400">{calculateFinalScore(currentScores).toFixed(2)}</p>
-                        <p className="text-sm text-navy-400">Nilai Akhir</p>
+                        <p className="text-sm text-navy-400">Nilai Mapel</p>
                     </div>
                     <div className="p-4 bg-navy-900 rounded-lg">
                         <p className="text-3xl font-bold text-sky-400">{studentRank || 'N/A'}</p>
-                        <p className="text-sm text-navy-400">Peringkat</p>
+                        <p className="text-sm text-navy-400">Peringkat Umum</p>
+                    </div>
+                </div>
+                 <div className="mt-6 border-t border-navy-700 pt-4">
+                    <h4 className="text-lg font-semibold text-sky-300 mb-3 text-left">Rata-rata Keseluruhan</h4>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="p-2 bg-navy-900 rounded-lg">
+                            <p className="text-xl font-bold text-indigo-400">{studentAverages.raport.toFixed(2)}</p>
+                            <p className="text-xs text-navy-400">Nilai Rapor</p>
+                        </div>
+                        <div className="p-2 bg-navy-900 rounded-lg">
+                            <p className="text-xl font-bold text-indigo-400">{studentAverages.attendance.toFixed(2)}%</p>
+                            <p className="text-xs text-navy-400">Kehadiran</p>
+                        </div>
+                        <div className="p-2 bg-navy-900 rounded-lg">
+                            <p className="text-xl font-bold text-indigo-400">{studentAverages.proactivity.toFixed(2)}</p>
+                            <p className="text-xs text-navy-400">Proaktif</p>
+                        </div>
                     </div>
                 </div>
               </div>
-            </Card>
-
-            <Card>
-                <h2 className="text-xl font-semibold mb-2 text-sky-300">Nilai Kehadiran</h2>
-                 <div style={{ width: '100%', height: 200 }}>
-                    <ResponsiveContainer>
-                        <RadialBarChart innerRadius="70%" outerRadius="100%" data={attendanceChartData} startAngle={90} endAngle={-270}>
-                            <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
-                            <RadialBar background dataKey='value' angleAxisId={0} data={[{ value: 100 }]} fill="#1e293b" cornerRadius={10} />
-                            <RadialBar dataKey="value" cornerRadius={10} />
-                            <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" className="text-4xl font-bold fill-current text-white">
-                                {`${Math.round(attendanceChartData[0].value)}%`}
-                            </text>
-                            <Tooltip formatter={(value: number) => [`${value.toFixed(2)}%`, "Persentase"]} />
-                        </RadialBarChart>
-                    </ResponsiveContainer>
-                </div>
             </Card>
           </div>
           
@@ -184,7 +219,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, studentData, setS
                 </div>
             </Card>
             <Card>
-                 <h2 className="text-xl font-semibold mb-4 text-sky-300">Peringkat Kelas - {selectedSubject}</h2>
+                 <h2 className="text-xl font-semibold mb-4 text-sky-300">Peringkat Kelas - Keseluruhan</h2>
                  <div className="max-h-96 overflow-y-auto pr-2">
                      <table className="w-full text-left">
                          <thead>
@@ -192,16 +227,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, studentData, setS
                                  <th className="p-2">Peringkat</th>
                                  <th className="p-2">Nama</th>
                                  <th className="p-2">NIM</th>
-                                 <th className="p-2 text-right">Nilai Akhir</th>
+                                 <th className="p-2 text-right">Rata-rata Nilai</th>
                              </tr>
                          </thead>
                          <tbody>
-                             {rankingData.map(s => (
+                             {overallRankingData.map(s => (
                                  <tr key={s.id} className={`border-b border-navy-800 ${s.id === selectedStudentId ? 'bg-navy-700/50' : ''}`}>
                                      <td className="p-2 font-bold text-indigo-400 text-lg">{s.rank}</td>
                                      <td className="p-2">{s.name}</td>
                                      <td className="p-2 text-navy-400">{s.nim}</td>
-                                     <td className="p-2 text-right font-semibold">{s.finalScore.toFixed(2)}</td>
+                                     <td className="p-2 text-right font-semibold">{s.overallScore.toFixed(2)}</td>
                                  </tr>
                              ))}
                          </tbody>
@@ -223,6 +258,22 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, studentData, setS
                             <Radar name={selectedStudent.name} dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
                             <Tooltip />
                         </RadarChart>
+                    </ResponsiveContainer>
+                </div>
+            </Card>
+             <Card>
+                <h2 className="text-xl font-semibold mb-2 text-sky-300">Nilai Kehadiran</h2>
+                 <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer>
+                        <RadialBarChart innerRadius="70%" outerRadius="100%" data={attendanceChartData} startAngle={90} endAngle={-270}>
+                            <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+                            <RadialBar background dataKey='value' angleAxisId={0} data={[{ value: 100 }]} fill="#1e293b" cornerRadius={10} />
+                            <RadialBar dataKey="value" cornerRadius={10} />
+                            <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" className="text-4xl font-bold fill-current text-white">
+                                {`${Math.round(attendanceChartData[0].value)}%`}
+                            </text>
+                            <Tooltip formatter={(value: number) => [`${value.toFixed(2)}%`, "Persentase"]} />
+                        </RadialBarChart>
                     </ResponsiveContainer>
                 </div>
             </Card>

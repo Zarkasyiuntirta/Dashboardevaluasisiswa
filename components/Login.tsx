@@ -48,9 +48,9 @@ const LoginComponent: React.FC<LoginComponentProps> = ({ onLogin, isExiting }) =
       <div className={`
         w-full max-w-md p-8 space-y-8 bg-navy-900/50 backdrop-blur-sm rounded-2xl shadow-2xl shadow-navy-950/50 border border-navy-800
         transition-all duration-[1200ms] ease-in-out [transform-style:preserve-3d]
-        ${isMounted && !isExiting ? 'opacity-100 translate-x-0 rotate-x-0' : 'opacity-0'}
-        ${!isMounted ? 'translate-x-full rotate-x-[-360deg]' : ''}
-        ${isExiting ? '-translate-x-full rotate-x-[360deg]' : ''}
+        ${isMounted && !isExiting ? 'opacity-100 rotate-x-0' : 'opacity-0'}
+        ${!isMounted ? 'rotate-x-[-180deg]' : ''}
+        ${isExiting ? 'rotate-x-[180deg]' : ''}
       `}>
         <div className="text-center">
             <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-500">
