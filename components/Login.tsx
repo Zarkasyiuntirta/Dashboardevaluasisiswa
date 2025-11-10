@@ -1,8 +1,8 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface LoginComponentProps {
   onLogin: (username: string, password: string) => boolean;
+  isExiting: boolean;
 }
 
 const UserIcon = () => (
@@ -18,23 +18,40 @@ const LockClosedIcon = () => (
 );
 
 
-const LoginComponent: React.FC<LoginComponentProps> = ({ onLogin }) => {
+const LoginComponent: React.FC<LoginComponentProps> = ({ onLogin, isExiting }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isMounted, setIsMounted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsMounted(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     setError('');
     const success = onLogin(username, password);
-    if (!success) {
+    if (success) {
+      setIsSubmitting(true);
+    } else {
       setError('Username atau password salah. Silakan coba lagi.');
     }
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-navy-900 to-navy-950">
-      <div className="w-full max-w-md p-8 space-y-8 bg-navy-900/50 backdrop-blur-sm rounded-2xl shadow-2xl shadow-navy-950/50 border border-navy-800">
+      <div className={`
+        w-full max-w-md p-8 space-y-8 bg-navy-900/50 backdrop-blur-sm rounded-2xl shadow-2xl shadow-navy-950/50 border border-navy-800
+        transition-all duration-[1200ms] ease-in-out [transform-style:preserve-3d]
+        ${isMounted && !isExiting ? 'opacity-100 translate-x-0 rotate-x-0' : 'opacity-0'}
+        ${!isMounted ? 'translate-x-full rotate-x-[-360deg]' : ''}
+        ${isExiting ? '-translate-x-full rotate-x-[360deg]' : ''}
+      `}>
         <div className="text-center">
             <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-500">
                 Dashboard Evaluasi
@@ -86,9 +103,10 @@ const LoginComponent: React.FC<LoginComponentProps> = ({ onLogin }) => {
           <div>
             <button
               type="submit"
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-navy-950 focus:ring-indigo-500 transition duration-300 ease-in-out transform hover:scale-105"
+              disabled={isSubmitting}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-navy-950 focus:ring-indigo-500 transition duration-300 ease-in-out transform hover:scale-105 disabled:opacity-50 disabled:scale-100"
             >
-              Login
+              {isSubmitting ? 'Verifying...' : 'Login'}
             </button>
           </div>
         </form>

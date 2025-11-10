@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [students, setStudents] = useState<Student[]>(() => {
     try {
       const savedData = localStorage.getItem('studentData');
@@ -28,18 +29,25 @@ function App() {
   const handleLogin = useCallback((username: string, password: string): boolean => {
     const lowerCaseUsername = username.toLowerCase();
     
+    const handleSuccess = (userData: User) => {
+        setIsAuthenticating(true);
+        setTimeout(() => {
+            setUser(userData);
+            setIsAuthenticating(false);
+        }, 1000); // Wait for animation to complete
+        return true;
+    };
+
     // Check for admin login
     const subjectAdmin = SUBJECTS.find(s => s.toLowerCase() === lowerCaseUsername);
     if (subjectAdmin && password === ADMIN_PASSWORD) {
-      setUser({ username: subjectAdmin, role: Role.ADMIN, subject: subjectAdmin });
-      return true;
+      return handleSuccess({ username: subjectAdmin, role: Role.ADMIN, subject: subjectAdmin });
     }
 
     // Check for student login
     const studentLogin = students.find(s => s.name.toLowerCase() === lowerCaseUsername);
     if (studentLogin && password === studentLogin.nim) {
-      setUser({ username: studentLogin.name, role: Role.STUDENT, studentId: studentLogin.id });
-      return true;
+      return handleSuccess({ username: studentLogin.name, role: Role.STUDENT, studentId: studentLogin.id });
     }
 
     return false;
@@ -50,11 +58,11 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-navy-950 font-sans">
+    <div className="min-h-screen bg-navy-950 font-sans [perspective:1000px] overflow-hidden">
       {user ? (
         <Dashboard user={user} onLogout={handleLogout} studentData={students} setStudentData={setStudents} />
       ) : (
-        <LoginComponent onLogin={handleLogin} />
+        <LoginComponent onLogin={handleLogin} isExiting={isAuthenticating} />
       )}
     </div>
   );
